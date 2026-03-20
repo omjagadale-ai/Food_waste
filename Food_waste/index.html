@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+    content="Share meals, spread hope. Donate surplus food to those in need through our connected platform." />
+  <title>FoodShare — End Food Waste, Feed the Hungry</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <!-- ── Navbar ─────────────────────────────────────────────── -->
+  <nav class="navbar" id="navbar">
+    <a href="/index.html" class="logo">
+      <div class="logo-icon">🍲</div>
+      Food<span>Share</span>
+    </a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="index.html" class="active">Home</a></li>
+      <li><a href="login.html">Login</a></li>
+      <li><a href="register.html" class="btn btn-primary btn-sm">Get Started</a></li>
+    </ul>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+  </nav>
+
+  <!-- ── Hero ───────────────────────────────────────────────── -->
+  <section class="hero" id="hero">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <h1 class="slide-up">Share Meals,<br /><span class="highlight">Spread Hope</span></h1>
+    <p class="subtitle slide-up" style="animation-delay:.1s">
+      Connect surplus food from restaurants, households &amp; events with NGOs and volunteers who deliver it to people
+      in need.
+    </p>
+    <div class="hero-actions slide-up" style="animation-delay:.2s">
+      <a href="register.html" class="btn btn-primary">Donate Food</a>
+      <a href="register.html" class="btn btn-secondary">Volunteer Now</a>
+    </div>
+  </section>
+
+  <!-- ── Stats ──────────────────────────────────────────────── -->
+  <section class="container">
+    <div class="stats-bar" id="statsBar">
+      <div class="stat-item fade-in">
+        <div class="stat-number" id="statMeals">0</div>
+        <div class="stat-label">Meals Saved</div>
+      </div>
+      <div class="stat-item fade-in" style="animation-delay:.1s">
+        <div class="stat-number" id="statDonors">0</div>
+        <div class="stat-label">Active Donors</div>
+      </div>
+      <div class="stat-item fade-in" style="animation-delay:.2s">
+        <div class="stat-number" id="statVolunteers">0</div>
+        <div class="stat-label">Volunteers</div>
+      </div>
+      <div class="stat-item fade-in" style="animation-delay:.3s">
+        <div class="stat-number" id="statDelivered">0</div>
+        <div class="stat-label">Deliveries Completed</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── How It Works ───────────────────────────────────────── -->
+  <section class="steps-section container">
+    <h2 class="text-center">How It Works</h2>
+    <div class="steps-grid">
+      <div class="step-card glass-card fade-in">
+        <div class="step-number">1</div>
+        <h3>List Surplus Food</h3>
+        <p>Restaurants, homes or event organisers post details of extra food — type, quantity and pickup time.</p>
+      </div>
+      <div class="step-card glass-card fade-in" style="animation-delay:.1s">
+        <div class="step-number">2</div>
+        <h3>Volunteers Claim</h3>
+        <p>Nearby NGOs and volunteers browse available donations and claim the ones they can collect.</p>
+      </div>
+      <div class="step-card glass-card fade-in" style="animation-delay:.2s">
+        <div class="step-number">3</div>
+        <h3>Deliver &amp; Nourish</h3>
+        <p>Food gets picked up and handed to communities in need. Every meal counts!</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer ─────────────────────────────────────────────── -->
+  <footer class="site-footer">
+    <div class="container">
+      &copy; 2026 FoodShare. Built with ❤️ to fight hunger.
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    // Animate stats counting up
+    function animateCount(el, target) {
+      let current = 0;
+      const step = Math.max(1, Math.ceil(target / 60));
+      const interval = setInterval(() => {
+        current += step;
+        if (current >= target) { current = target; clearInterval(interval); }
+        el.textContent = current.toLocaleString();
+      }, 25);
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      animateCount(document.getElementById('statMeals'), 12480);
+      animateCount(document.getElementById('statDonors'), 340);
+      animateCount(document.getElementById('statVolunteers'), 520);
+      animateCount(document.getElementById('statDelivered'), 8930);
+    });
+  </script>
+</body>
+
+</html>
