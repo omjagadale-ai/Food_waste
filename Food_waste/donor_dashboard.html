@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Donor Dashboard — FoodShare</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <!-- ── Navbar (logged-in) ─────────────────────────────────── -->
+  <nav class="navbar" id="navbar">
+    <a href="index.html" class="logo">
+      <div class="logo-icon">🍲</div>
+      Food<span>Share</span>
+    </a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="donor_dashboard.html" class="active">Dashboard</a></li>
+      <li><a href="#" id="logoutBtn">Logout</a></li>
+    </ul>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+  </nav>
+
+  <!-- ── Toast container ────────────────────────────────────── -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ── Dashboard ──────────────────────────────────────────── -->
+  <main class="container dashboard fade-in">
+
+    <!-- Header -->
+    <div class="dashboard-header">
+      <div>
+        <h1>👋 Hello, <span id="userName">Donor</span></h1>
+        <p class="text-dim">Manage your food donations</p>
+      </div>
+      <button class="btn btn-primary" id="openCreateModal">+ New Donation</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar" id="statsBar">
+      <div class="stat-item">
+        <div class="stat-number" id="myTotal">0</div>
+        <div class="stat-label">My Donations</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" id="myAvailable">0</div>
+        <div class="stat-label">Available</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" id="myClaimed">0</div>
+        <div class="stat-label">Claimed</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" id="myCompleted">0</div>
+        <div class="stat-label">Completed</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-filter="all">All</button>
+      <button class="tab-btn" data-filter="available">Available</button>
+      <button class="tab-btn" data-filter="claimed">Claimed</button>
+      <button class="tab-btn" data-filter="completed">Completed</button>
+    </div>
+
+    <!-- Donation grid -->
+    <div class="donation-grid" id="donationGrid">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">📭</div>
+        <p>No donations yet. Click <strong>+ New Donation</strong> to add surplus food.</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- ── Create / Edit Modal ────────────────────────────────── -->
+  <div class="modal-overlay" id="donationModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">New Donation</h2>
+        <button class="modal-close" id="closeModal">&times;</button>
+      </div>
+      <form id="donationForm">
+        <input type="hidden" id="editId" value="" />
+
+        <div class="form-group">
+          <label for="dTitle">Title</label>
+          <input type="text" id="dTitle" class="form-control" placeholder="e.g. Leftover biryani" required />
+        </div>
+
+        <div class="form-group">
+          <label for="dFoodType">Food Type</label>
+          <select id="dFoodType" class="form-control" required>
+            <option value="">Select type…</option>
+            <option value="Cooked Meal">Cooked Meal</option>
+            <option value="Raw Ingredients">Raw Ingredients</option>
+            <option value="Packaged Food">Packaged Food</option>
+            <option value="Beverages">Beverages</option>
+            <option value="Baked Goods">Baked Goods</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="dQuantity">Quantity</label>
+          <input type="text" id="dQuantity" class="form-control" placeholder="e.g. Serves 20 people" required />
+        </div>
+
+        <div class="form-group">
+          <label for="dAddress">Pickup Address</label>
+          <input type="text" id="dAddress" class="form-control" placeholder="Full address" required />
+        </div>
+
+        <div class="form-group">
+          <label for="dPickupBy">Pickup Before</label>
+          <input type="datetime-local" id="dPickupBy" class="form-control" required />
+        </div>
+
+        <div class="form-group">
+          <label for="dDesc">Description <span class="text-muted">(optional)</span></label>
+          <textarea id="dDesc" class="form-control" placeholder="Any extra details…"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="submitDonation">Create Donation</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Footer ─────────────────────────────────────────────── -->
+  <footer class="site-footer">
+    <div class="container">&copy; 2026 FoodShare</div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    // ── Guard ──────────────────────────────────────────────────
+    const user = getUser();
+    if (!user || user.role !== 'donor') { window.location.href = 'login.html'; }
+    document.getElementById('userName').textContent = user.name;
+
+    const API = 'http://localhost:5000/api';
+    let allDonations = [];
+    let currentFilter = 'all';
+
+    // ── Load donations ────────────────────────────────────────
+    async function loadDonations() {
+      try {
+        const res = await authFetch(`${API}/donations?donor_id=${user.id}`);
+        allDonations = await res.json();
+        updateStats();
+        renderGrid();
+      } catch (e) {
+        showToast('Failed to load donations', 'error');
+      }
+    }
+
+    function updateStats() {
+      document.getElementById('myTotal').textContent = allDonations.length;
+      document.getElementById('myAvailable').textContent = allDonations.filter(d => d.status === 'available').length;
+      document.getElementById('myClaimed').textContent = allDonations.filter(d => d.status === 'claimed').length;
+      document.getElementById('myCompleted').textContent = allDonations.filter(d => d.status === 'completed').length;
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('donationGrid');
+      const filtered = currentFilter === 'all' ? allDonations : allDonations.filter(d => d.status === currentFilter);
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>No donations found.</p></div>`;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(d => `
+        <div class="donation-card fade-in">
+          <div class="card-header">
+            <div class="card-title">${esc(d.title)}</div>
+            <span class="badge badge-${d.status}">${d.status}</span>
+          </div>
+          <div class="card-meta">
+            <div class="meta-row">🍽️ ${esc(d.food_type)}</div>
+            <div class="meta-row">📦 ${esc(d.quantity)}</div>
+            <div class="meta-row">📍 ${esc(d.pickup_address)}</div>
+            <div class="meta-row">⏰ Pickup by ${new Date(d.pickup_by).toLocaleString()}</div>
+          </div>
+          ${d.description ? `<p class="text-dim" style="font-size:0.875rem;margin-bottom:var(--sp-md)">${esc(d.description)}</p>` : ''}
+          <div class="card-footer">
+            <span class="text-muted" style="font-size:0.8rem">Created ${new Date(d.created_at).toLocaleDateString()}</span>
+            ${d.status === 'available' ? `
+              <div style="display:flex;gap:var(--sp-sm)">
+                <button class="btn btn-secondary btn-sm" onclick="editDonation(${d.id})">Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteDonation(${d.id})">Delete</button>
+              </div>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ── Tabs ──────────────────────────────────────────────────
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        renderGrid();
+      });
+    });
+
+    // ── Modal ─────────────────────────────────────────────────
+    const modal = document.getElementById('donationModal');
+    document.getElementById('openCreateModal').addEventListener('click', () => {
+      document.getElementById('modalTitle').textContent = 'New Donation';
+      document.getElementById('submitDonation').textContent = 'Create Donation';
+      document.getElementById('donationForm').reset();
+      document.getElementById('editId').value = '';
+      modal.classList.add('active');
+    });
+    document.getElementById('closeModal').addEventListener('click', () => modal.classList.remove('active'));
+    modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('active'); });
+
+    // ── Create / Update ───────────────────────────────────────
+    document.getElementById('donationForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const editId = document.getElementById('editId').value;
+      const payload = {
+        title: document.getElementById('dTitle').value,
+        food_type: document.getElementById('dFoodType').value,
+        quantity: document.getElementById('dQuantity').value,
+        pickup_address: document.getElementById('dAddress').value,
+        pickup_by: document.getElementById('dPickupBy').value,
+        description: document.getElementById('dDesc').value,
+      };
+
+      try {
+        const url = editId ? `${API}/donations/${editId}` : `${API}/donations`;
+        const method = editId ? 'PUT' : 'POST';
+        const res = await authFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+        showToast(editId ? 'Donation updated!' : 'Donation created!', 'success');
+        modal.classList.remove('active');
+        loadDonations();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    // ── Edit ──────────────────────────────────────────────────
+    window.editDonation = function (id) {
+      const d = allDonations.find(x => x.id === id);
+      if (!d) return;
+      document.getElementById('modalTitle').textContent = 'Edit Donation';
+      document.getElementById('submitDonation').textContent = 'Save Changes';
+      document.getElementById('editId').value = d.id;
+      document.getElementById('dTitle').value = d.title;
+      document.getElementById('dFoodType').value = d.food_type;
+      document.getElementById('dQuantity').value = d.quantity;
+      document.getElementById('dAddress').value = d.pickup_address;
+      document.getElementById('dPickupBy').value = d.pickup_by ? d.pickup_by.slice(0, 16) : '';
+      document.getElementById('dDesc').value = d.description || '';
+      modal.classList.add('active');
+    };
+
+    // ── Delete ────────────────────────────────────────────────
+    window.deleteDonation = async function (id) {
+      if (!confirm('Delete this donation?')) return;
+      try {
+        const res = await authFetch(`${API}/donations/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Delete failed');
+        showToast('Donation deleted', 'success');
+        loadDonations();
+      } catch (err) { showToast(err.message, 'error'); }
+    };
+
+    // ── Init ──────────────────────────────────────────────────
+    loadDonations();
+  </script>
+</body>
+
+</html>
