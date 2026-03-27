@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Volunteer Dashboard — FoodShare</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <!-- ── Navbar ─────────────────────────────────────────────── -->
+  <nav class="navbar" id="navbar">
+    <a href="index.html" class="logo">
+      <div class="logo-icon">🍲</div>
+      Food<span>Share</span>
+    </a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="volunteer_dashboard.html" class="active">Dashboard</a></li>
+      <li><a href="#" id="logoutBtn">Logout</a></li>
+    </ul>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+  </nav>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ── Dashboard ──────────────────────────────────────────── -->
+  <main class="container dashboard fade-in">
+
+    <div class="dashboard-header">
+      <div>
+        <h1>👋 Hello, <span id="userName">Volunteer</span></h1>
+        <p class="text-dim">Browse donations &amp; manage your pickups</p>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-number" id="totalAvailable">0</div>
+        <div class="stat-label">Available Donations</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" id="myClaimed">0</div>
+        <div class="stat-label">My Claimed</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" id="myCompleted">0</div>
+        <div class="stat-label">My Delivered</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="browse">Browse Donations</button>
+      <button class="tab-btn" data-tab="myClaims">My Pickups</button>
+    </div>
+
+    <!-- Browse Tab -->
+    <section id="browseTab">
+      <div class="donation-grid" id="browseGrid">
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <p>No available donations right now.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- My Claims Tab -->
+    <section id="myClaimsTab" style="display:none">
+      <div class="donation-grid" id="claimsGrid">
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <p>You haven't claimed any donations yet.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">&copy; 2026 FoodShare</div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    const user = getUser();
+    if (!user || user.role !== 'volunteer') { window.location.href = 'login.html'; }
+    document.getElementById('userName').textContent = user.name;
+
+    const API = 'http://localhost:5000/api';
+    let availableDonations = [];
+    let myClaims = [];
+
+    // ── Tabs ──────────────────────────────────────────────────
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('browseTab').style.display = btn.dataset.tab === 'browse' ? '' : 'none';
+        document.getElementById('myClaimsTab').style.display = btn.dataset.tab === 'myClaims' ? '' : 'none';
+      });
+    });
+
+    // ── Load ──────────────────────────────────────────────────
+    async function loadAll() {
+      await Promise.all([loadAvailable(), loadClaims()]);
+      updateStats();
+    }
+
+    async function loadAvailable() {
+      try {
+        const res = await authFetch(`${API}/donations?status=available`);
+        availableDonations = await res.json();
+        renderBrowse();
+      } catch (e) { showToast('Failed to load donations', 'error'); }
+    }
+
+    async function loadClaims() {
+      try {
+        const res = await authFetch(`${API}/claims`);
+        myClaims = await res.json();
+        renderClaims();
+      } catch (e) { showToast('Failed to load claims', 'error'); }
+    }
+
+    function updateStats() {
+      document.getElementById('totalAvailable').textContent = availableDonations.length;
+      document.getElementById('myClaimed').textContent = myClaims.filter(c => !c.completed_at).length;
+      document.getElementById('myCompleted').textContent = myClaims.filter(c => c.completed_at).length;
+    }
+
+    function renderBrowse() {
+      const grid = document.getElementById('browseGrid');
+      if (availableDonations.length === 0) {
+        grid.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>No available donations right now. Check back later!</p></div>`;
+        return;
+      }
+      grid.innerHTML = availableDonations.map(d => `
+        <div class="donation-card fade-in">
+          <div class="card-header">
+            <div class="card-title">${esc(d.title)}</div>
+            <span class="badge badge-available">Available</span>
+          </div>
+          <div class="card-meta">
+            <div class="meta-row">🍽️ ${esc(d.food_type)}</div>
+            <div class="meta-row">📦 ${esc(d.quantity)}</div>
+            <div class="meta-row">📍 ${esc(d.pickup_address)}</div>
+            <div class="meta-row">⏰ Pickup by ${new Date(d.pickup_by).toLocaleString()}</div>
+            <div class="meta-row">👤 Donated by ${esc(d.donor_name || 'Unknown')}</div>
+          </div>
+          ${d.description ? `<p class="text-dim" style="font-size:0.875rem;margin-bottom:var(--sp-md)">${esc(d.description)}</p>` : ''}
+          <div class="card-footer">
+            <span class="text-muted" style="font-size:0.8rem">${new Date(d.created_at).toLocaleDateString()}</span>
+            <button class="btn btn-primary btn-sm" onclick="claimDonation(${d.id})">🤝 Claim Pickup</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderClaims() {
+      const grid = document.getElementById('claimsGrid');
+      if (myClaims.length === 0) {
+        grid.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>You haven't claimed any donations yet.</p></div>`;
+        return;
+      }
+      grid.innerHTML = myClaims.map(c => {
+        const d = c.donation || {};
+        const done = !!c.completed_at;
+        return `
+        <div class="donation-card fade-in">
+          <div class="card-header">
+            <div class="card-title">${esc(d.title || 'Donation')}</div>
+            <span class="badge ${done ? 'badge-completed' : 'badge-claimed'}">${done ? 'Delivered' : 'Claimed'}</span>
+          </div>
+          <div class="card-meta">
+            <div class="meta-row">🍽️ ${esc(d.food_type || '')}</div>
+            <div class="meta-row">📦 ${esc(d.quantity || '')}</div>
+            <div class="meta-row">📍 ${esc(d.pickup_address || '')}</div>
+            <div class="meta-row">⏰ Pickup by ${d.pickup_by ? new Date(d.pickup_by).toLocaleString() : '—'}</div>
+          </div>
+          <div class="card-footer">
+            <span class="text-muted" style="font-size:0.8rem">Claimed ${new Date(c.claimed_at).toLocaleDateString()}</span>
+            ${!done ? `<button class="btn btn-primary btn-sm" onclick="completeClaim(${c.id})">✅ Mark Delivered</button>` : `<span class="text-dim" style="font-size:0.85rem">Delivered ${new Date(c.completed_at).toLocaleDateString()}</span>`}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Actions ───────────────────────────────────────────────
+    window.claimDonation = async function (id) {
+      try {
+        const res = await authFetch(`${API}/donations/${id}/claim`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+        showToast('Donation claimed! Go pick it up 🎉', 'success');
+        loadAll();
+      } catch (err) { showToast(err.message, 'error'); }
+    };
+
+    window.completeClaim = async function (id) {
+      try {
+        const res = await authFetch(`${API}/claims/${id}/complete`, { method: 'PUT' });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+        showToast('Marked as delivered! ✅', 'success');
+        loadAll();
+      } catch (err) { showToast(err.message, 'error'); }
+    };
+
+    loadAll();
+  </script>
+</body>
+
+</html>
